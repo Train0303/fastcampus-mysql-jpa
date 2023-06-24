@@ -1,5 +1,12 @@
 package com.example.fastcampusmysql.domain.post.dto;
 
-public record PostCommand (Long memberId, String contents) {
+import lombok.Builder;
 
+public record PostCommand(
+        Long memberId,
+        String contents
+) {
+    @Builder
+    public PostCommand {
+    }
 }

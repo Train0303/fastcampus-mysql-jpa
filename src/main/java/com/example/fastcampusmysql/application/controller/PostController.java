@@ -1,10 +1,10 @@
 package com.example.fastcampusmysql.application.controller;
 
-import com.example.fastcampusmysql.application.usacase.CreatePostLikeUsacase;
-import com.example.fastcampusmysql.application.usacase.CreatePostUsecase;
-import com.example.fastcampusmysql.application.usacase.GetTimelinePostsUsecase;
-import com.example.fastcampusmysql.domain.post.dto.DailyPostCount;
-import com.example.fastcampusmysql.domain.post.dto.DailyPostCountRequest;
+import com.example.fastcampusmysql.application.usecase.CreatePostLikeUsecase;
+import com.example.fastcampusmysql.application.usecase.CreatePostUsecase;
+import com.example.fastcampusmysql.application.usecase.GetTimelinePostUsecase;
+import com.example.fastcampusmysql.domain.post.dto.DailyPostCountRequestDto;
+import com.example.fastcampusmysql.domain.post.dto.DailyPostCountResponseDto;
 import com.example.fastcampusmysql.domain.post.dto.PostCommand;
 import com.example.fastcampusmysql.domain.post.dto.PostDto;
 import com.example.fastcampusmysql.domain.post.entity.Post;
@@ -14,68 +14,67 @@ import com.example.fastcampusmysql.util.CursorRequest;
 import com.example.fastcampusmysql.util.PageCursor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+
 @RequiredArgsConstructor
-@RestController
 @RequestMapping("/posts")
+@RestController
 public class PostController {
-    final private PostWriteService postWriteService;
-    final private PostReadService postReadService;
-
-    final private GetTimelinePostsUsecase getTimelinePostsUsecase;
-
-    final private CreatePostUsecase createPostUsecase;
-
-    final private CreatePostLikeUsacase createPostLikeUsacase;
+    private final PostWriteService postWriteService;
+    private final PostReadService postReadService;
+    private final GetTimelinePostUsecase getTimelinePostUsecase;
+    private final CreatePostUsecase createPostUsecase;
+    private final CreatePostLikeUsecase createPostLikeUsecase;
 
     @PostMapping("")
-    public Long create(@RequestBody PostCommand command) {
-//        return postWriteService.create(command);
+    public Long create(@RequestBody PostCommand command){
         return createPostUsecase.execute(command);
     }
-    
-    @GetMapping("/daily-post-counts")
-    public List<DailyPostCount> getDailyPostCounts(DailyPostCountRequest request) {
-        return postReadService.getDailyPostCounts(request);
+
+    @GetMapping("daily-post-counts")
+    public List<DailyPostCountResponseDto> getDailyPostCounts(DailyPostCountRequestDto request){
+        return postReadService.getDailyPostCount(request);
     }
 
-
-    @GetMapping("/members/{memberId}")
+    // PageRequest는 binding을 못해줌 Pageable을 이용해야함.
+    @GetMapping("members/{memberId}")
     public Page<PostDto> getPosts(
             @PathVariable Long memberId,
-            @RequestParam Integer page,
-            @RequestParam Integer size
-    ) {
-        return postReadService.getPostDtos(memberId, PageRequest.of(page, size));
+            @PageableDefault(size=10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable){
+        return postReadService.getPosts(memberId, pageable);
     }
 
-    
+    // 오프셋 기반 페이지네이션은 중복을 볼 수 있지만, 커서 기반은 그럴 일이 없음
+    @GetMapping("members/{memberId}/by-cursor")
+    public PageCursor<Post> getPostsByCursor(
+            @PathVariable Long memberId,
+            CursorRequest cursorRequest){
+        return postReadService.getPosts(memberId, cursorRequest);
+    }
+
     @GetMapping("/members/{memberId}/timeline")
-    public PageCursor<PostDto> getTimeline(
+    public PageCursor<Post> getTimeline(
             @PathVariable Long memberId,
             CursorRequest cursorRequest
-    ) {
-//        return getTimelinePostsUsecase.execute(memberId, cursorRequest);
-        return getTimelinePostsUsecase.executeByTimeline(memberId, cursorRequest);
+    ){
+        return getTimelinePostUsecase.executeByTimeline(memberId, cursorRequest);
     }
 
-
     @PostMapping("/{postId}/like/v1")
-    public void like(@PathVariable Long postId) {
+    public void likePost(@PathVariable Long postId) {
 //        postWriteService.likePost(postId);
         postWriteService.likePostByOptimisticLock(postId);
     }
 
     @PostMapping("/{postId}/like/v2")
-    public void like(
-            @PathVariable Long postId,
-            @RequestParam Long memberId
-    ) {
-        createPostLikeUsacase.execute(postId, memberId);
+    public void likePostV2(@PathVariable Long postId, @RequestParam Long memberId) {
+//        postWriteService.likePost(postId);
+        createPostLikeUsecase.execute(postId, memberId);
     }
-
 }

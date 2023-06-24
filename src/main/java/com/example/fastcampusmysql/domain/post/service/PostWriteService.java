@@ -1,39 +1,49 @@
 package com.example.fastcampusmysql.domain.post.service;
 
-import com.example.fastcampusmysql.domain.post.entity.Post;
-import com.example.fastcampusmysql.domain.post.repository.PostRepository;
 import com.example.fastcampusmysql.domain.post.dto.PostCommand;
-import com.example.fastcampusmysql.domain.post.repository.TimelineRepository;
+import com.example.fastcampusmysql.domain.post.entity.Post;
+import com.example.fastcampusmysql.domain.post.repository.PostJpaCustomRepository;
+import com.example.fastcampusmysql.domain.post.repository.PostJpaRepository;
+import com.example.fastcampusmysql.domain.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+// 06/23 jpa로 구현완
+
 @RequiredArgsConstructor
 @Service
+@Transactional
 public class PostWriteService {
-    final private PostRepository postRepository;
+    private final PostRepository postRepository;
+    private final PostJpaRepository postJpaRepository;
 
-    public Long create(PostCommand command) {
-        var post = Post
-                .builder()
+    public Post save(Post post) {
+        if(post.getId() == null) {
+            return postJpaRepository.save(post);
+        }
+        return postJpaRepository.update(post);
+    }
+
+    public Long create(PostCommand command){
+        Post post = Post.builder()
                 .memberId(command.memberId())
                 .contents(command.contents())
                 .build();
 
-        return postRepository.save(post).getId();
+        return save(post).getId();
     }
-
 
     @Transactional
     public void likePost(Long postId) {
-        var post = postRepository.findById(postId, true).orElseThrow();
+        Post post = postJpaRepository.findByIdForUpdate(postId).orElseThrow();
         post.incrementLikeCount();
-        postRepository.save(post);
+        save(post);
     }
 
     public void likePostByOptimisticLock(Long postId) {
-        var post = postRepository.findById(postId, false).orElseThrow();
+        Post post = postJpaRepository.findById(postId).orElseThrow();
         post.incrementLikeCount();
-        postRepository.save(post);
+        save(post);
     }
 }

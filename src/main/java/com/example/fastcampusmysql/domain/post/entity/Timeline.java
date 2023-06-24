@@ -1,26 +1,30 @@
 package com.example.fastcampusmysql.domain.post.entity;
 
-import lombok.Builder;
-import lombok.Getter;
+import com.example.fastcampusmysql.domain.base.entity.BaseEntity;
+import lombok.*;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Getter
-public class Timeline {
-    final private Long id;
-
-    final private Long memberId;
-
-    final private Long postId;
-
-    final private LocalDateTime createdAt;
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@ToString(callSuper = true)
+@Entity
+public class Timeline extends BaseEntity {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long memberId;
+    private Long postId;
 
     @Builder
     public Timeline(Long id, Long memberId, Long postId, LocalDateTime createdAt) {
+        super(createdAt);
         this.id = id;
         this.memberId = Objects.requireNonNull(memberId);
         this.postId = Objects.requireNonNull(postId);
-        this.createdAt = createdAt == null ? LocalDateTime.now() : createdAt;
     }
 }

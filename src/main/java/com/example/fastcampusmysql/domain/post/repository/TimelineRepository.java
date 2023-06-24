@@ -1,5 +1,6 @@
 package com.example.fastcampusmysql.domain.post.repository;
 
+import com.example.fastcampusmysql.domain.post.entity.Post;
 import com.example.fastcampusmysql.domain.post.entity.Timeline;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
@@ -18,65 +19,58 @@ import java.util.List;
 @Repository
 public class TimelineRepository {
     final static String TABLE = "Timeline";
-
-    final private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-
-    final static private RowMapper<Timeline> ROW_MAPPER = (ResultSet resultSet, int rowNum) -> Timeline.builder()
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final static RowMapper<Timeline> ROW_MAPPER = (ResultSet resultSet, int rowNum) -> Timeline.builder()
             .id(resultSet.getLong("id"))
             .memberId(resultSet.getLong("memberId"))
             .postId(resultSet.getLong("postId"))
             .createdAt(resultSet.getObject("createdAt", LocalDateTime.class))
             .build();
+    public Timeline save(Timeline timeline) {
+        if(timeline.getId() == null){
+            return insert(timeline);
+        }
+
+        throw new UnsupportedOperationException("Timeline은 갱신을 지원하지 않습니다.");
+    }
 
     public List<Timeline> findAllByMemberIdAndOrderByIdDesc(Long memberId, int size) {
-        var sql = String.format("""
+        String sql = String.format("""
                 SELECT *
                 FROM %s
                 WHERE memberId = :memberId
                 ORDER BY id desc
                 LIMIT :size
                 """, TABLE);
-
-        var params = new MapSqlParameterSource()
+        MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("memberId", memberId)
-                .addValue("size", size)
-                ;
-
+                .addValue("size", size);
         return namedParameterJdbcTemplate.query(sql, params, ROW_MAPPER);
     }
 
-    public List<Timeline> findAllByLessThanIdAndMemberIdAndOrderByIdDesc(Long id, Long memberId, int size) {
-        var sql = String.format("""
+    public List<Timeline> findAllByLessThanIdAndMemberIdAndOrderByIdDesc(Long id, Long memberId, int size){
+        String sql = String.format("""
                 SELECT *
                 FROM %s
                 WHERE memberId = :memberId and id < :id
                 ORDER BY id desc
                 LIMIT :size
                 """, TABLE);
-
-        var params = new MapSqlParameterSource()
+        MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("memberId", memberId)
                 .addValue("id", id)
-                .addValue("size", size)
-                ;
+                .addValue("size", size);
+
         return namedParameterJdbcTemplate.query(sql, params, ROW_MAPPER);
     }
 
-    public Timeline save(Timeline timeline) {
-        if (timeline.getId() == null) {
-            return insert(timeline);
-        }
-
-        throw new UnsupportedOperationException("Timeline는 갱신을 지원하지 않습니다");
-    }
-
-    private Timeline insert(Timeline timeline) {
+    public Timeline insert(Timeline timeline){
         SimpleJdbcInsert jdbcInsert = new SimpleJdbcInsert(namedParameterJdbcTemplate.getJdbcTemplate())
                 .withTableName(TABLE)
                 .usingGeneratedKeyColumns("id");
 
         SqlParameterSource params = new BeanPropertySqlParameterSource(timeline);
-        var id = jdbcInsert.executeAndReturnKey(params).longValue();
+        long id = jdbcInsert.executeAndReturnKey(params).longValue();
 
         return Timeline.builder()
                 .id(id)
@@ -86,13 +80,13 @@ public class TimelineRepository {
                 .build();
     }
 
-    public void bulkInsert(List<Timeline> timeline) {
-        var sql = String.format("""
+    public void bulkInsert(List<Timeline> timelines) {
+        String sql = String.format("""
                 INSERT INTO `%s` (memberId, postId, createdAt)
                 VALUES (:memberId, :postId, :createdAt)
                 """, TABLE);
 
-        SqlParameterSource[] params = timeline
+        SqlParameterSource[] params = timelines
                 .stream()
                 .map(BeanPropertySqlParameterSource::new)
                 .toArray(SqlParameterSource[]::new);

@@ -4,50 +4,47 @@ import com.example.fastcampusmysql.domain.member.dto.MemberDto;
 import com.example.fastcampusmysql.domain.member.dto.MemberNicknameHistoryDto;
 import com.example.fastcampusmysql.domain.member.entity.Member;
 import com.example.fastcampusmysql.domain.member.entity.MemberNicknameHistory;
+import com.example.fastcampusmysql.domain.member.mapper.MemberMapper;
+import com.example.fastcampusmysql.domain.member.mapper.MemberNicknameHistoryMapper;
+import com.example.fastcampusmysql.domain.member.repository.MemberJpaRepository;
+import com.example.fastcampusmysql.domain.member.repository.MemberNicknameHistoryJpaRepository;
 import com.example.fastcampusmysql.domain.member.repository.MemberNicknameHistoryRepository;
 import com.example.fastcampusmysql.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 
 @RequiredArgsConstructor
 @Service
 public class MemberReadService {
-    private final MemberRepository memberRepository;
+//    private final MemberRepository memberRepository;
+//    private final MemberNicknameHistoryRepository memberNicknameHistoryRepository;
+    private final MemberJpaRepository memberJpaRepository;
+    private final MemberNicknameHistoryJpaRepository memberNicknameHistoryJpaRepository;
+    private final MemberNicknameHistoryMapper historyMapper;
+    private final MemberMapper memberMapper;
 
-    private final MemberNicknameHistoryRepository memberNicknameHistoryRepository;
-
-    public MemberDto getMember(Long memberId) {
-        var member = memberRepository.findById(memberId).orElseThrow();
-        return toDto(member);
-    }
-
-    public List<MemberDto> getMembers(List<Long> memberIds) {
-        var members = memberRepository.findAllByIdIn(memberIds);
-        return members.stream()
-                .map(this::toDto)
-                .toList();
+    public MemberDto getMember(Long id){
+//        Member member = memberRepository.findById(id).orElseThrow();
+        Member member = memberJpaRepository.findById(id).orElseThrow();
+        return memberMapper.memberToMemberDto(member);
     }
 
     public List<MemberNicknameHistoryDto> getNicknameHistories(Long memberId) {
-        var histories = memberNicknameHistoryRepository.findAllByMemberId(memberId);
-        return histories.stream()
-                .map(this::toDto)
-                .toList();
+        return memberNicknameHistoryJpaRepository.findAllByMemberId(memberId)
+                .stream()
+                .map(historyMapper::historyToHistoryDto)
+                .collect(Collectors.toList());
     }
 
-    public MemberDto toDto(Member member) {
-        return new MemberDto(member.getId(), member.getNickname(), member.getEmail(), member.getBirthday());
-    }
-
-    public MemberNicknameHistoryDto toDto(MemberNicknameHistory history) {
-        return new MemberNicknameHistoryDto(
-                history.getId(),
-                history.getMemberId(),
-                history.getNickname(),
-                history.getCreatedAt()
-        );
-
+    public List<MemberDto> getMembers(List<Long> ids){
+            return memberJpaRepository.findAllByIdIn(ids)
+                    .stream()
+                    .map(memberMapper::memberToMemberDto)
+                    .collect(Collectors.toList());
     }
 }
